@@ -65,7 +65,7 @@ replace_element(Grid, NumOfColumns, X, Y, NewElement, RGrids) :-
 	replace(Grid, Index, NewElement, RGrids).
 
 % Predicado para reemplazar múltiples elementos de la grilla
-replace_elements(Grid, NumOfColumns, [], Element, Grid). % Caso base: no hay más elementos para reemplazar
+replace_elements(Grid, _NumOfColumns, [], _Element, Grid). % Caso base: no hay más elementos para reemplazar
 replace_elements(Grid, NumOfColumns, [[X, Y] | Rest], Element, RGrids) :-
 	replace_element(Grid, NumOfColumns, X, Y, Element, TempGrid),
 	replace_elements(TempGrid, NumOfColumns, Rest, Element, RGrids).
@@ -124,7 +124,7 @@ join(Grid, NumOfColumns, Path, RGrids) :-
  * en todo momento que el path cambie, desde el front-end
  */ 
 
-to_generate(Grid, NumOfColumns, [], ToGenerate) .
+to_generate(_Grid, _NumOfColumns, [], _ToGenerate) .
 to_generate(Grid, NumOfColumns, Path, ToGenerate):-
     sum_grid_elements(Grid, Path, NumOfColumns, Sum),
     next_power_of_two(Sum, ToGenerate).
@@ -135,4 +135,11 @@ to_generate(Grid, NumOfColumns, Path, ToGenerate):-
  * más abajo a la derecha (mayor índice) de cada grupo, por la potencia de 2 mayor o igual a la sumatoria de todos los numeros del grupo
  */ 
 
-booster_colapse(Grid, NumOfColumns, RGrid).
+booster_colapse(Grid, NumOfColumns, RGrid):-
+    divide_grid(NumOfColumns, Grid, GridInRows),
+    remove_groups(GridInRows, NumOfColumns, Grid1),
+    apply_gravity(Grid1, NumOfColumns, Grid2),
+	replace_zeros_grid(Grid2, Grid3),
+    append([], [Grid1], Tmp1),
+    append(Tmp1, [Grid2], Tmp2),
+    append(Tmp2, [Grid3], RGrids).

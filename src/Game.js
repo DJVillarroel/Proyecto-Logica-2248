@@ -135,7 +135,7 @@ function Game() {
         onPathChange={onPathChange}
         onDone={onPathDone}
       />
-      <button className="square">Booster</button>
+      <button className="booster">Booster</button>
     </div>
   );
 }

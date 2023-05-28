@@ -1,6 +1,7 @@
 body {
   font: 14px "Century Gothic", Futura, sans-serif;
-  margin: 20px;
+  margin: 10px;
+  background-color: black;
 }
 
 .game {
@@ -10,16 +11,20 @@ body {
 }
 
 .header {
-  border-bottom: 1px solid lightgray;
+  border-bottom: 5px solid #344465;
+  border-radius: 10px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
+  background-color: #435780;
 }
 
 .score {
-  margin: 10px;
+  margin: 2px;
   font-size: 25px;
+  color: white;
 }
 
 .board {
@@ -54,11 +59,27 @@ body {
   align-items: center;
   justify-content: center;
   margin: 5px;
-  border-radius: 5px;
+  border-radius: 25px;
   font-size: 25px;
   padding: 10px;
   color: white;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.booster{
+  background-color: #7C9AD8;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 25px;
+  border-bottom: 5px solid #344465;
+  font-size: 25px;
+  color: white;
+}
+
+.booster:hover{
+  border-bottom: 0px;
 }
 
 .rise {

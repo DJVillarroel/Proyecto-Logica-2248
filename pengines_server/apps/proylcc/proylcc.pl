@@ -14,7 +14,16 @@
 		move_zeros/2,
 		apply_gravity/3,
 		join/4,
-        to_generate/4
+        to_generate/4,
+        is_valid_pos/4,
+        adjacents/6,
+        adjacents_all/6,
+        remove_groups/3,
+        remove_groups/7,
+        calculate_coordinates/3,
+        translate_indexes/3,
+        translate_indexes/4,
+        booster_colapse/3
 	]).
 
 :- use_module(library(clpfd)).
@@ -129,17 +138,98 @@ to_generate(Grid, NumOfColumns, Path, ToGenerate):-
     sum_grid_elements(Grid, Path, NumOfColumns, Sum),
     next_power_of_two(Sum, ToGenerate).
 
+
+%Chequea si la posición pasada pertenece a la Grilla
+is_valid_pos(I, J, NumOfRows, NumOfColumns) :-
+	I > 0, J > 0, I =< NumOfRows, J =< NumOfColumns.
+
+%Devuelve una lista de adyacentes iguales
+adjacents(Grid, NumOfColumns, NumOfRows, X, Y, List) :-
+	is_valid_pos(X, Y, NumOfRows, NumOfColumns),
+	Pos1 is (X-1) * NumOfColumns + Y,
+	nth1(Pos1, Grid, Elem),
+	findall(Pos, 
+				(between(-1, 1, DIStep),
+				between(-1, 1, DJStep),
+				XAdj is X + DIStep,
+				YAdj is Y + DJStep,
+				is_valid_pos(XAdj, YAdj, NumOfRows, NumOfColumns),          
+				Pos is (XAdj-1) * NumOfColumns + YAdj,          
+				nth1(Pos, Grid, Elem2),
+				Elem == Elem2), 
+			List).
+
+%Devuelve un camino RList de elementos adyacentes de igual valor
+adjacents_all(_, [], _, _, _, []). %Caso base
+adjacents_all(Grid, Path, Visited, NumOfColumns, NumOfRows, RList):- %Caso recursivo
+	Path = [H|T],
+	not(member(H, Visited)),
+	append([H],Visited, VisitedAux),
+	PosXAux is H div NumOfColumns,
+	PosYAux is H mod NumOfColumns,
+	(PosYAux == 0 -> PosY is NumOfColumns; PosY is PosYAux ),
+	(PosYAux == 0 -> PosX is PosXAux; PosX is PosXAux+1),
+	adjacents(Grid, NumOfColumns, NumOfRows, PosX, PosY, AdjList),
+	append(T, AdjList, NewPath),
+	adjacents_all(Grid, NewPath, VisitedAux, NumOfColumns, NumOfRows, RList2),
+	(last(RList2, LastElem), LastElem < H -> append(RList2, [H], RList) ; append([H], RList2, RList)),
+	!
+	;
+	Path = [_|T],
+	adjacents_all(Grid, T, Visited, NumOfColumns, NumOfRows, RList).
+
+%Predicado cascara de remove_groups/7
+remove_groups(Grid, NumOfColumns, RGrids):- 
+	length(Grid, CantElem),
+	NumOfRows is CantElem/NumOfColumns,	
+	remove_groups(Grid, Grid, 1, [], NumOfColumns, NumOfRows, AuxRGrids),
+	last(AuxRGrids, RGrids).
+
+%Remueve todos los grupos de números de igual valor adyacentes entre sí, reemplaza todos los números de los caminos en 0 exceptuando
+%al elemento del path de mayor valor
+remove_groups(Grid, _, Index, _, _, _,[]):- %Caso base
+	length(Grid, CantElem),
+	Index > CantElem.
+remove_groups(Grid, GridNew, Index, Visited, NumOfColumns, NumOfRows, RGrids):- %Caso recursivo
+	not(member(Index, Visited)),
+	Index2 is Index + 1,
+	adjacents_all(Grid, [Index], [], NumOfColumns, NumOfRows, AdjPath),
+	append(AdjPath, Visited, VisitedAux),
+    translate_indexes(AdjPath, NumOfColumns, AdjPathAsCoord),
+	replace_path(GridNew, NumOfColumns, AdjPathAsCoord, GridWithZeros),
+	remove_groups(Grid, GridWithZeros, Index2, VisitedAux, NumOfColumns, NumOfRows, RGridsNew),	
+	append([GridWithZeros], RGridsNew, RGrids),
+	!
+	;   
+	Index2 is Index+1,
+	remove_groups(Grid, GridNew, Index2, Visited, NumOfColumns, NumOfRows, RGrids).
+
+% Predicado para calcular las coordenadas en base a un índice (índice base 1) 
+calculate_coordinates(Index, NumOfColumns, [X, Y]) :-
+    X is (Index - 1) // NumOfColumns,
+    Y is (Index - 1) mod NumOfColumns.
+
+%Predicado cascara de translate_indexes/4, al recibir una lista al reves, la idea es que vuelva a tener las posiciones en su lugar
+translate_indexes(IndexList, NumOfColumns, CoordinatesList) :-
+    translate_indexes(IndexList, NumOfColumns, CoordinatesListReversed, []),
+    reverse(CoordinatesListReversed, CoordinatesList).
+
+% Predicado que traduce una lista de indices a listas de coordenadas X,Y de la grilla
+translate_indexes([], _, CoordinatesList, CoordinatesList).
+translate_indexes([Index | Rest], NumOfColumns, CoordinatesList, Acc) :-
+    calculate_coordinates(Index, NumOfColumns, Coordinates),
+    translate_indexes(Rest, NumOfColumns, CoordinatesList, [Coordinates | Acc]).
+
 /**
  * booster_colapse(+Grid, +NumOfColumns, -RGrids) 
- * **** A IMPLEMENTAR **** este predicado eliminará todos los grupos de números adyacentes reemplazando en el elemento
+ * este predicado eliminará todos los grupos de números adyacentes reemplazando en el elemento
  * más abajo a la derecha (mayor índice) de cada grupo, por la potencia de 2 mayor o igual a la sumatoria de todos los numeros del grupo
  */ 
 
 booster_colapse(Grid, NumOfColumns, RGrid):-
-    divide_grid(NumOfColumns, Grid, GridInRows),
-    remove_groups(GridInRows, NumOfColumns, Grid1),
+    remove_groups(Grid, NumOfColumns, Grid1),
     apply_gravity(Grid1, NumOfColumns, Grid2),
 	replace_zeros_grid(Grid2, Grid3),
     append([], [Grid1], Tmp1),
     append(Tmp1, [Grid2], Tmp2),
-    append(Tmp2, [Grid3], RGrids).
+    append(Tmp2, [Grid3], RGrid).

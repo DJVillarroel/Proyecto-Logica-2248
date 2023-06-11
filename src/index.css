@@ -14,10 +14,10 @@ body {
   border-bottom: 5px solid #344465;
   border-radius: 10px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
+  height: 7vh;
   background-color: #435780;
 }
 

@@ -108,7 +108,22 @@ function Game() {
     pengine.query(queryS, (success, response) => {
       if (success) {
         console.log(response['RGrids']);
+        setPath([]);
         animateEffect(response['RGrids']);
+      } else {
+        setWaiting(false);
+      }
+    });
+  }
+
+  function bestPath(){
+    const gridS = JSON.stringify(grid);
+    const queryS = "find_best_path(" + gridS + "," + numOfColumns +", RPath)";
+    setWaiting(true);
+    pengine.query(queryS, (success, response) => {
+      if (success) {
+        console.log(response['RPath']);
+        onPathChange(response['RPath']);
       } else {
         setWaiting(false);
       }
@@ -149,7 +164,10 @@ function Game() {
         onPathChange={onPathChange}
         onDone={onPathDone}
       />
-      <button className="booster" onClick={booster}>Booster</button>
+      <div className='botones'>
+        <button className="booster" onClick={booster}>Booster</button>
+        <button className="booster" onClick={bestPath}>Mejor camino</button>
+      </div>
     </div>
   );
 }

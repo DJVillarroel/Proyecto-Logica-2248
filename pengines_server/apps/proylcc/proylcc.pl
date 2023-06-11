@@ -23,7 +23,8 @@
         calculate_coordinates/3,
         translate_indexes/3,
         translate_indexes/4,
-        booster_colapse/3
+        booster_colapse/3,
+		find_best_path/3
 	]).
 
 :- use_module(library(clpfd)).
@@ -233,3 +234,11 @@ booster_colapse(Grid, NumOfColumns, RGrid):-
     append([], [Grid1], Tmp1),
     append(Tmp1, [Grid2], Tmp2),
     append(Tmp2, [Grid3], RGrid).
+
+/**
+ * find_best_path(+Grid, +NumOfColumns, -RPath) 
+ * predicado que encontrará el mejor camino posible de una grilla en cuanto al valor numérico resultante
+ */ 
+
+find_best_path(Grid, NumOfColumns, RPath):- 
+	RPath = [[2,0],[3,0],[4,1]].

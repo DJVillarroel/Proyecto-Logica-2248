@@ -50,8 +50,6 @@ function Game() {
         if (success) {
           setToGenerate(response.ToGenerate);
           console.log(response);
-        } else {
-          setWaiting(false);
         }
       });
     }
@@ -127,6 +125,7 @@ function Game() {
         setWaiting(false);
       }
     });
+    setWaiting(false);
   }
 
   /**

@@ -165,6 +165,7 @@ function Game() {
       <div className='botones'>
         <button className="booster" onClick={booster}>Booster</button>
         <button className="booster" onClick={bestPath}>Mejor camino</button>
+        <button className="booster" onClick={bestPath}>Máximo adyacente</button>
       </div>
     </div>
   );

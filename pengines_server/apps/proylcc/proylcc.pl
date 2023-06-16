@@ -235,10 +235,106 @@ booster_colapse(Grid, NumOfColumns, RGrid):-
     append(Tmp1, [Grid2], Tmp2),
     append(Tmp2, [Grid3], RGrid).
 
+
+% Predicado que chequea el valor del cuadrado resultante del Path pasado como parámetro
+check_result_square(Grid, [H|T], Sum, RSquare):-
+	T == [],
+	nth1(H, Grid, Elem),
+	AuxSum is Sum+Elem,
+	sum_next_power(AuxSum, Pot),
+	RSquare is 2**Pot.
+check_result_square(Grid, Path,Sum, RSquare):-
+	Path = [H|T],
+	nth1(H, Grid, Elem),
+	AuxSum is Sum+Elem,
+	check_result_square(Grid, T, AuxSum, RSquare).
+    
+%Devuelve una lista de adyacentes de igual valor o igual a la siguiente potencia de 2 del elemento en cuestión (Modificación de adjacents)
+adjacents_best(Grid, NumOfColumns, NumOfRows, X, Y, List) :-
+	is_valid_pos(X, Y, NumOfRows, NumOfColumns),
+	Pos1 is (X-1) * NumOfColumns + Y,
+	nth1(Pos1, Grid, Elem),
+	findall(Pos, 
+				(between(-1, 1, DIStep),
+				between(-1, 1, DJStep),
+				XAdj is X + DIStep,
+				YAdj is Y + DJStep,
+				is_valid_pos(XAdj, YAdj, NumOfRows, NumOfColumns),          
+				Pos is (XAdj-1) * NumOfColumns + YAdj,          
+				nth1(Pos, Grid, Elem2),
+				Elem3 is Elem*2,
+				(Elem2 == Elem; Elem2 == Elem3)), 
+			List).
+
+%Devuelve el mejor camino RList posible a partir de determinado indice de la grilla
+adjacents_all_best_path(_, [], _, _, _, 0, []).
+adjacents_all_best_path(Grid, Path, Visited, NumOfColumns, NumOfRows, MaxSum, RList):-
+	Path = [H|T],
+	not(member(H, Visited)),
+	append([H],Visited, VisitedAux),
+	PosXAux is H div NumOfColumns,
+	PosYAux is H mod NumOfColumns,
+	(PosYAux == 0 -> PosY is NumOfColumns; PosY is PosYAux ),
+	(PosYAux == 0 -> PosX is PosXAux; PosX is PosXAux+1),
+	adjacents_best(Grid, NumOfColumns, NumOfRows, PosX, PosY, AdjList),
+	adjacents_all_best_path(Grid, AdjList, VisitedAux, NumOfColumns, NumOfRows, MaxSumAux, RList_1),
+	adjacents_all_best_path(Grid, T, VisitedAux, NumOfColumns, NumOfRows, MaxSumAux2, RList_2),
+	nth1(H, Grid, Elem),
+	SumH is Elem + MaxSumAux,
+	sum_next_power(SumH, Pot_1),
+	sum_next_power(MaxSumAux2, Pot_2),
+	(Pot_1 >= Pot_2 -> append([H], RList_1, RList), MaxSum is SumH;  
+	RList = RList_2, MaxSum is MaxSumAux2)
+	;   
+	Path = [_|T],
+	adjacents_all_best_path(Grid, T, Visited, NumOfColumns, NumOfRows, MaxSum, RList).
+
+%Calcula la próxima potencia de 2 según la sumatoria
+sum_next_power(Sum, 1) :- Sum=<2, !.
+sum_next_power(Sum, Pot) :- 
+        SumAux is Sum/2,
+        sum_next_power(SumAux, PotAux),
+        Pot is PotAux + 1,
+        Sum =< 2**Pot,
+        !.
+
+%Predicado que encuentra el mejor camino posible RPath dentro de una grilla, siempre controla que el primer y segundo
+%elemento del camino sean de igual valor. El camino es devuelto en una lista de indices, a ser pasados a coordenadas
+best_path(Grid, OldPath, _, _, Index, RPath):-
+    length(Grid, Length),
+    Index > Length,
+    RPath = OldPath.
+best_path(Grid, OldPath, NumOfColumns, NumOfRows, Index, RPath):-
+    PosXAux is Index div NumOfColumns,
+	PosYAux is Index mod NumOfColumns,
+	(PosYAux == 0 -> PosY is NumOfColumns; PosY is PosYAux),
+	(PosYAux == 0 -> PosX is PosXAux; PosX is PosXAux+1),
+	adjacents(Grid, NumOfColumns, NumOfRows, PosX, PosY, AdjList), %Si es el primer elemento, debe buscar un segundo elemento de igual valor
+	length(AdjList, LengthAdj),
+	LengthAdj > 1,
+	adjacents_all_best_path(Grid, AdjList, [Index], NumOfColumns, NumOfRows, MaxSum, PathNew),
+	nth1(Index, Grid, Elem),
+	SumAux is Elem + MaxSum,
+    check_result_square(Grid, OldPath, 0, RSquare),
+	sum_next_power(SumAux, NextPow),
+    (2**NextPow >= RSquare ->   
+		append([Index], PathNew, PathNew2),
+		IndexNew is Index+1,
+		best_path(Grid,PathNew2, NumOfColumns, NumOfRows, IndexNew, RPath);
+		IndexNew is Index+1,
+		best_path(Grid, OldPath, NumOfColumns, NumOfRows, IndexNew , RPath))
+	;   
+	IndexNew is Index+1,
+	best_path(Grid, OldPath, NumOfColumns, NumOfRows, IndexNew, RPath).
+
 /**
  * find_best_path(+Grid, +NumOfColumns, -RPath) 
  * predicado que encontrará el mejor camino posible de una grilla en cuanto al valor numérico resultante
+ * encontrará el mejor camino en índices, y luego los traducirá a coordenadas X,Y en base (0,0)
  */ 
 
 find_best_path(Grid, NumOfColumns, RPath):- 
-	RPath = [[2,0],[3,0],[4,1]].
+	length(Grid, CantElem),
+	NumOfRows is CantElem/NumOfColumns,
+	best_path(Grid, [1], NumOfColumns, NumOfRows, 1, BestPath),
+	translate_indexes(BestPath, NumOfColumns, RPath).

@@ -128,6 +128,20 @@ function Game() {
     setWaiting(false);
   }
 
+  function bestAdjacent(){
+    const gridS = JSON.stringify(grid);
+    const queryS = "find_best_adjacent_path(" + gridS + "," + numOfColumns +", RPath)";
+    setWaiting(true);
+    pengine.query(queryS, (success, response) => {
+      if (success) {
+        onPathChange(response['RPath']);
+      } else {
+        setWaiting(false);
+      }
+    });
+    setWaiting(false);
+  }
+
   /**
    * Displays each grid of the sequence as the current grid in 1sec intervals.
    * @param {number[][]} rGrids a sequence of grids.
@@ -165,7 +179,7 @@ function Game() {
       <div className='botones'>
         <button className="booster" onClick={booster}>Booster</button>
         <button className="booster" onClick={bestPath}>Mejor camino</button>
-        <button className="booster" onClick={bestPath}>Máximo adyacente</button>
+        <button className="booster" onClick={bestAdjacent}>Máximo adyacente</button>
       </div>
     </div>
   );

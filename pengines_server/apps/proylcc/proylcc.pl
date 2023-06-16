@@ -24,6 +24,11 @@
         translate_indexes/3,
         translate_indexes/4,
         booster_colapse/3,
+		check_result_square/4,
+		adjacents_best/6,
+		adjacents_all_best_path/7,
+		best_path/6,
+		sum_next_power/2,
 		find_best_path/3
 	]).
 
@@ -338,3 +343,6 @@ find_best_path(Grid, NumOfColumns, RPath):-
 	NumOfRows is CantElem/NumOfColumns,
 	best_path(Grid, [1], NumOfColumns, NumOfRows, 1, BestPath),
 	translate_indexes(BestPath, NumOfColumns, RPath).
+
+find_best_adjacent_path(Grid, NumOfColumns, RPath):-
+	RPath = [[1,1],[1,2],[1,3]].

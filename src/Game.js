@@ -135,6 +135,7 @@ function Game() {
     pengine.query(queryS, (success, response) => {
       if (success) {
         onPathChange(response['RPath']);
+        console.log(queryS);
       } else {
         setWaiting(false);
       }

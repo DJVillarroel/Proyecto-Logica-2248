@@ -332,6 +332,166 @@ best_path(Grid, OldPath, NumOfColumns, NumOfRows, Index, RPath):-
 	IndexNew is Index+1,
 	best_path(Grid, OldPath, NumOfColumns, NumOfRows, IndexNew, RPath).
 
+%Predicado que chequea si existe un elemento adyacente igual a la posición pasada por parametro, 0 falso, 1 verdadero
+check_if_adjacent(_, _, _, [], _, 1).
+check_if_adjacent(Grid, NumOfColumns, NumOfRows, IndexList, [PosX,PosY], Check) :-
+    IndexList = [H|_],
+	adjacents(Grid, NumOfColumns, NumOfRows, PosX, PosY, AdjList),
+    member(H, AdjList),
+    Check is 0,
+    !
+    ;   
+    IndexList = [_|T],
+    check_if_adjacent(Grid, NumOfColumns, NumOfRows, T, [PosX,PosY], Check)
+    .
+
+%Predicado que cuenta los ceros después de una posición de la lista
+count_zeros_after_pos(List, Position, Count) :-
+    nth0(Position, List, _),
+    sublist_after_index(List, Position, Sublist),
+    include(=(0), Sublist, Zeros),
+    length(Zeros, Count).
+
+sublist_after_index(List, Index, Sublist) :-
+    length(Prefix, Index),
+    append(Prefix, Sublist, List).
+
+%Predicado que simula la gravedad de la grilla, y obtiene la nueva posición teórica de la posición pasada por parámetro
+simulate_gravity(Grid, NumOfColumns, CoordinateList, [X,Y], [NewX, Y], RGrid) :-
+    divide_grid(NumOfColumns, Grid, RColumns),
+	transpose(RColumns, Transposed),
+	nth0(Y, Transposed, Column),
+    count_zeros_after_pos(Column, X, Zeros),
+    NewX is X+Zeros,
+    move_zeros(Transposed, RColumnsFixed),
+	transpose(RColumnsFixed, FixedGrid),
+    flatten(FixedGrid, RGrid).
+
+%Simula la gravedad y chequea si el último elemento tiene como adyacente el máximo valor
+fake_gravity(Grid, Path, NumOfColumns, NumOfRows, IndexList, Check) :-
+	translate_indexes(IndexList, NumOfColumns, CoordinateList),
+	translate_indexes(Path, NumOfColumns, TPath),
+    last(TPath, IndexPos),
+    replace_path(Grid, NumOfColumns, TPath, FGridAux),
+    simulate_gravity(FGridAux, NumOfColumns, CoordinateList, IndexPos, NewPos, FGrid),
+    check_if_adjacent(FGrid, NumOfColumns, NumOfRows, IndexList, NewPos, Check),
+    !
+    .
+
+%Predicado que devuelve la lista de indices de la grilla (Base 1)
+index_list([], _, []). %Caso Base: lista vacía
+index_list(Grid, Index, IndexList) :- %Caso Recursivo
+    Grid = [_|T],
+    IndexList = [Index|H],
+    NextIndex is Index + 1,
+    index_list(T, NextIndex, H).
+
+%Predicado que ordena una lista y otra lista auxiliar en terminos de la primera, algoritmo de ordenamiento bubble_sort
+sort_list_and_indexes(List, IndexListAux, IndexList, Sorted1) :-
+       	(sort(List, IndexListAux, IndexList1, Sorted)
+       	-> sort_list_and_indexes(Sorted, IndexList1, IndexList, Sorted1)
+       	; List = Sorted1, IndexListAux = IndexList).
+
+sort([A,B|T], [X,Y|T1], IndexList, List) :-
+        (A < B
+        -> List = [B,A|T], IndexList = [Y,X|T1]
+        ; List = [A|Ls], IndexList = [X|T2],
+        sort([B|T], [Y|T1], T2, Ls)).
+
+%Predicado que agrupa elementos de una lista en una sub-lista si los valores de sus elementos son iguales,
+%Utiliza 2 listas, la lista de indices, y la lista de valores, para devolver solo los indices ordenados
+equal_values_list(PrevIndexElem, Sorted, _, Index, [[PrevIndexElem]]):-
+	length(Sorted, Length),
+	Index > Length.
+equal_values_list(PrevIndexElem, Sorted, IndexList, Index, RLists):-
+	nth1(Index, Sorted, Elem),
+    nth1(PrevIndexElem, Sorted, PrevElem),
+	(PrevElem == Elem->
+		Index2 is Index + 1,
+		equal_values_list(Index, Sorted, IndexList, Index2, RListsAux),
+		RListsAux = [H|T],
+        nth1(PrevIndexElem, IndexList, ElemIndex),
+		append([ElemIndex], H, ThisList),
+		append([ThisList], T, RLists),
+    !
+	;
+		Index2 is Index + 1,
+		equal_values_list(Index, Sorted, IndexList, Index2, RListsAux), 
+    	nth1(PrevIndexElem, IndexList, ElemIndex),
+		append([[ElemIndex]], RListsAux, RLists)).
+
+adjacents_all_best_path_next_to_value(_, [], _, _, _, _, _, []).
+adjacents_all_best_path_next_to_value(Grid, Path, Visited, NumOfColumns, NumOfRows, Sum, BiggestAdj, RList):-
+	Path = [H|T],
+	not(member(H, Visited)),
+	append([H],Visited, VisitedAux),
+	PosXAux is H div NumOfColumns,
+	PosYAux is H mod NumOfColumns,
+	(PosYAux == 0 -> PosY is NumOfColumns; PosY is PosYAux),
+	(PosYAux == 0 -> PosX is PosXAux; PosX is PosXAux+1),
+	nth1(H, Grid, Elem),
+	AuxSum is Elem + Sum,
+	sum_next_power(AuxSum, NextPow),
+	NextSum is 2**NextPow,
+	(NextSum < BiggestAdj ->
+		adjacents_best(Grid, NumOfColumns, NumOfRows, PosX, PosY, AdjList),
+		(adjacents_all_best_path_next_to_value(Grid, AdjList, VisitedAux, NumOfColumns, NumOfRows,  AuxSum, BiggestAdj, RListAux)->
+			(RListAux \==[] -> append([H], RListAux, RList); RList = [])
+			;
+			adjacents_all_best_path_next_to_value(Grid, T, VisitedAux, NumOfColumns, NumOfRows, Sum, BiggestAdj, RList))
+		;
+		NextSum == BiggestAdj,
+		RList = [H]
+	),
+	!
+	;  
+	Sum < BiggestAdj,
+	Path = [_|T],
+	adjacents_all_best_path_next_to_value(Grid, T, Visited, NumOfColumns, NumOfRows, Sum, BiggestAdj, RList).
+
+%Predicado que encuentra el mejor camino adyacente posible al valor BiggestAdj pasado como parametro
+best_adjacent_path(Grid, _, _, Index, _, _, _, []):- %Caso Base
+	length(Grid, Length),
+	Index > Length,
+    !.
+best_adjacent_path(Grid, NumOfColumns, NumOfRows, Index, IndexList, BiggestAdj,SublistLength, RPath):- %Caso Recursivo
+	PosXAux is Index div NumOfColumns,
+	PosYAux is Index mod NumOfColumns,
+	(PosYAux == 0 -> PosY is NumOfColumns; PosY is PosYAux),
+	(PosYAux == 0 -> PosX is PosXAux; PosX is PosXAux+1),
+	nth1(Index, Grid, Elem),
+	adjacents(Grid, NumOfColumns, NumOfRows, PosX, PosY, AdjList),
+	length(AdjList, LengthAdj),
+	LengthAdj > 1,
+	adjacents_all_best_path_next_to_value(Grid, AdjList, [Index], NumOfColumns, NumOfRows, Elem, BiggestAdj, RList),
+	length(RList, PathLength),
+	PathLength \== 0,
+	append([Index], RList, Path),
+	%(SublistLength==1->
+	%	fake_gravity(Grid, Path, NumOfColumns, NumOfRows, IndexList, CheckAux)),
+	%CheckAux == 0,
+	RPath = Path,		
+	!
+	;
+	Index2 is Index + 1,
+	best_adjacent_path(Grid, NumOfColumns, NumOfRows, Index2, IndexList, BiggestAdj,SublistLength, RPath).
+
+%Predicado cascara, toma valores por sus indices ordenados de mayor a menor, busca el mejor camino adyacente posible
+%a dicho valor. 
+max_adjacent(_, _, _, [], []).
+max_adjacent(Grid, NumOfColumns, NumOfRows, RIndexLists, RPath):-
+	RIndexLists = [List|_],
+	List = [H|_],
+	nth1(H, Grid, BiggestAdj),
+	length(List, SublistLength),
+	best_adjacent_path(Grid, NumOfColumns, NumOfRows, 1, List, BiggestAdj, SublistLength, RPathAux),
+	length(RPathAux, Length),
+	Length > 1,
+	RPath = RPathAux
+	;
+	RIndexLists = [_|T],
+	max_adjacent(Grid, NumOfColumns, NumOfRows, T, RPath).
+
 /**
  * find_best_path(+Grid, +NumOfColumns, -RPath) 
  * predicado que encontrará el mejor camino posible de una grilla en cuanto al valor numérico resultante
@@ -344,5 +504,18 @@ find_best_path(Grid, NumOfColumns, RPath):-
 	best_path(Grid, [1], NumOfColumns, NumOfRows, 1, BestPath),
 	translate_indexes(BestPath, NumOfColumns, RPath).
 
+/**
+ * find_best_adjacent_path(+Grid, +NumOfColumns, -RPath) 
+ * predicado que encuentra el mejor camino posible cuyo valor adyacente al bloque a generar sea el más alto posible
+ * 
+ */ 
+
 find_best_adjacent_path(Grid, NumOfColumns, RPath):-
-	RPath = [[1,1],[1,2],[1,3]].
+	length(Grid, Length),
+	NumOfRows is Length div NumOfColumns,
+	index_list(Grid, 1, IndexList), %Lista de indices (base 1)
+	sort_list_and_indexes(Grid, IndexList, RIndexList, Sorted), %Ordenar indices y grilla en base a sus valores
+	equal_values_list(1, Sorted, RIndexList, 2, RIndexLists), %Listar indices de igual valor en sub-listas
+	max_adjacent(Grid, NumOfColumns, NumOfRows, RIndexLists, RPathAux), 
+	translate_indexes(RPathAux, NumOfColumns, RPath), %Traducir indices en base 1 a pares ordenados
+    !. %Corta si encuentra un camino correspondiente

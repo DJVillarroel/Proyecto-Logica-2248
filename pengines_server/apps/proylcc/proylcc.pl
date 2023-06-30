@@ -341,7 +341,7 @@ coord_to_index(Coords, NumOfColumns, Indexes):-
 	coord_to_index(T, NumOfColumns, IndAux),
 	append([Pos], IndAux, Indexes). 
 
-%Predicado que chequea si existe un elemento adyacente igual a la posición pasada por parametro, 0 falso, 1 verdadero
+%Predicado que chequea si existe un elemento adyacente igual a la posición pasada por parametro, 1 falso, 0 verdadero
 check_if_adjacent(_, _, _, [], _, 1).
 check_if_adjacent(Grid, NumOfColumns, NumOfRows, IndexList, [PosX,PosY], Check) :-
     IndexList = [H|_],

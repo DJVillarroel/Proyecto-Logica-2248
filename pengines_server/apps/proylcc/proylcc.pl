@@ -332,11 +332,20 @@ best_path(Grid, OldPath, NumOfColumns, NumOfRows, Index, RPath):-
 	IndexNew is Index+1,
 	best_path(Grid, OldPath, NumOfColumns, NumOfRows, IndexNew, RPath).
 
+%Predicado similar a translate_indexes/3, cambia de manera inversa las coordenadas a indices base 1
+coord_to_index([], _, []).
+coord_to_index(Coords, NumOfColumns, Indexes):-
+	Coords = [H|T],
+	H = [X|Y],
+	Pos is X * NumOfColumns + Y + 1,
+	coord_to_index(T, NumOfColumns, IndAux),
+	append([Pos], IndAux, Indexes). 
+
 %Predicado que chequea si existe un elemento adyacente igual a la posición pasada por parametro, 0 falso, 1 verdadero
 check_if_adjacent(_, _, _, [], _, 1).
 check_if_adjacent(Grid, NumOfColumns, NumOfRows, IndexList, [PosX,PosY], Check) :-
     IndexList = [H|_],
-	adjacents(Grid, NumOfColumns, NumOfRows, PosX, PosY, AdjList),
+	adjacents(Grid, NumOfColumns, NumOfRows, PosX+1, PosY+1, AdjList), %adjacents se maneja con posiciones en indices base [1,1], se suma 1 a cada coordenada
     member(H, AdjList),
     Check is 0,
     !
@@ -356,13 +365,24 @@ sublist_after_index(List, Index, Sublist) :-
     length(Prefix, Index),
     append(Prefix, Sublist, List).
 
+%Cambia la posición de las coordenadas según el efecto de gravedad correspondiente.
+gravity_to_coordinates(_,[],[]). %Caso base
+gravity_to_coordinates(Columns, Coordinates, RList):- %Caso recursivo
+	Coordinates = [H|T],
+	H = [X,Y],
+	nth0(Y, Columns, Column),
+	count_zeros_after_pos(Column, X, Zeros),
+	NewX is X+Zeros,
+	gravity_to_coordinates(Columns, T, RListAux),
+	append(RListAux, [[NewX, Y]], RList).
+
 %Predicado que simula la gravedad de la grilla, y obtiene la nueva posición teórica de la posición pasada por parámetro
-simulate_gravity(Grid, NumOfColumns, CoordinateList, [X,Y], [NewX, Y], RGrid) :-
+simulate_gravity(Grid, NumOfColumns, CoordinateList, LastElem, NewLastElem, CoordWithGravity, RGrid) :-
     divide_grid(NumOfColumns, Grid, RColumns),
 	transpose(RColumns, Transposed),
-	nth0(Y, Transposed, Column),
-    count_zeros_after_pos(Column, X, Zeros),
-    NewX is X+Zeros,
+	gravity_to_coordinates(Transposed, [LastElem], NewLastElem),
+	gravity_to_coordinates(Transposed, CoordinateList, CoordWithGravityAux),
+	reverse(CoordWithGravityAux, CoordWithGravity),
     move_zeros(Transposed, RColumnsFixed),
 	transpose(RColumnsFixed, FixedGrid),
     flatten(FixedGrid, RGrid).
@@ -373,8 +393,10 @@ fake_gravity(Grid, Path, NumOfColumns, NumOfRows, IndexList, Check) :-
 	translate_indexes(Path, NumOfColumns, TPath),
     last(TPath, IndexPos),
     replace_path(Grid, NumOfColumns, TPath, FGridAux),
-    simulate_gravity(FGridAux, NumOfColumns, CoordinateList, IndexPos, NewPos, FGrid),
-    check_if_adjacent(FGrid, NumOfColumns, NumOfRows, IndexList, NewPos, Check),
+    simulate_gravity(FGridAux, NumOfColumns, CoordinateList, IndexPos, NewPos, CoordsWithGravity, RGrid),
+    NewPos = [H|_],
+	coord_to_index(CoordsWithGravity, NumOfColumns, IndexesWithGravity),
+    check_if_adjacent(RGrid, NumOfColumns, NumOfRows, IndexesWithGravity, H, Check),
     !
     .
 
@@ -450,11 +472,11 @@ adjacents_all_best_path_next_to_value(Grid, Path, Visited, NumOfColumns, NumOfRo
 	adjacents_all_best_path_next_to_value(Grid, T, Visited, NumOfColumns, NumOfRows, Sum, BiggestAdj, RList).
 
 %Predicado que encuentra el mejor camino adyacente posible al valor BiggestAdj pasado como parametro
-best_adjacent_path(Grid, _, _, Index, _, _, _, []):- %Caso Base
+best_adjacent_path(Grid, _, _, Index, _, _, []):- %Caso Base
 	length(Grid, Length),
 	Index > Length,
     !.
-best_adjacent_path(Grid, NumOfColumns, NumOfRows, Index, IndexList, BiggestAdj,SublistLength, RPath):- %Caso Recursivo
+best_adjacent_path(Grid, NumOfColumns, NumOfRows, Index, IndexList, BiggestAdj, RPath):- %Caso Recursivo
 	PosXAux is Index div NumOfColumns,
 	PosYAux is Index mod NumOfColumns,
 	(PosYAux == 0 -> PosY is NumOfColumns; PosY is PosYAux),
@@ -467,14 +489,13 @@ best_adjacent_path(Grid, NumOfColumns, NumOfRows, Index, IndexList, BiggestAdj,S
 	length(RList, PathLength),
 	PathLength \== 0,
 	append([Index], RList, Path),
-	%(SublistLength==1->
-	%	fake_gravity(Grid, Path, NumOfColumns, NumOfRows, IndexList, CheckAux)),
-	%CheckAux == 0,
+	fake_gravity(Grid, Path, NumOfColumns, NumOfRows, IndexList, CheckAux),
+	CheckAux == 0,
 	RPath = Path,		
 	!
 	;
 	Index2 is Index + 1,
-	best_adjacent_path(Grid, NumOfColumns, NumOfRows, Index2, IndexList, BiggestAdj,SublistLength, RPath).
+	best_adjacent_path(Grid, NumOfColumns, NumOfRows, Index2, IndexList, BiggestAdj, RPath).
 
 %Predicado cascara, toma valores por sus indices ordenados de mayor a menor, busca el mejor camino adyacente posible
 %a dicho valor. 
@@ -483,8 +504,7 @@ max_adjacent(Grid, NumOfColumns, NumOfRows, RIndexLists, RPath):-
 	RIndexLists = [List|_],
 	List = [H|_],
 	nth1(H, Grid, BiggestAdj),
-	length(List, SublistLength),
-	best_adjacent_path(Grid, NumOfColumns, NumOfRows, 1, List, BiggestAdj, SublistLength, RPathAux),
+	best_adjacent_path(Grid, NumOfColumns, NumOfRows, 1, List, BiggestAdj, RPathAux),
 	length(RPathAux, Length),
 	Length > 1,
 	RPath = RPathAux
